@@ -1,0 +1,40 @@
+name: Final visual fix
+on:
+  push:
+    branches: [assets-diagnostico]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore first visual and remove duplicate HTML blocks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('.hero{position:relative;overflow:hidden;', '.hero>div:first-child{display:none}.hero{display:block;min-height:0;padding:0!important;position:relative;overflow:hidden;')
+          s=s.replace('.heroVisual{width:100%;max-width:none;height:auto;margin:0;border-radius:34px;overflow:hidden;box-shadow:none}', '.heroVisual{width:100%;max-width:none;height:auto;margin:0;border-radius:34px;overflow:hidden;box-shadow:none}')
+          s=s.replace('.heroVisual picture,.heroVisual img{height:auto!important}', '.heroVisual picture,.heroVisual img{height:auto!important;display:block;width:100%}')
+          s=s.replace('.heroVisual picture,.heroVisual img{display:block;width:100%;height:auto}.heroVisual img{object-fit:contain;object-position:center}', '.heroVisual picture,.heroVisual img{display:block;width:100%;height:auto}.heroVisual img{object-fit:contain;object-position:center}')
+          s=s.replace('<div class="assetSection"></div>', '<div class="assetSection"><div class="assetVisual"><picture><source media="(max-width:540px)" srcset="problema-mobile.PNG"><img src="problema-desktop.PNG" alt="El problema de pagar por aplicaciones que no necesitas"></picture></div></div>', 1)
+          s=s.replace('<div class="section center"><div class="kicker">EL PROBLEMA</div>', '<div class="section center" style="display:none"><div class="kicker">EL PROBLEMA</div>', 1)
+          s=s.replace('<div class="cards">', '<div class="cards" style="display:none">', 1)
+          s=s.replace('<div class="section showcase">', '<div class="section showcase" style="display:none">', 1)
+          s=s.replace('<div class="steps" style="display:none">', '<div class="steps" style="display:none">', 1)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Finalize visual sections without duplicate copy'
+          git push
+      - name: Remove workflow
+        if: success()
+        run: |
+          git rm .github/workflows/final-visual-fix.yml
+          git commit -m 'Remove final visual fix workflow [skip actions]'
+          git push
