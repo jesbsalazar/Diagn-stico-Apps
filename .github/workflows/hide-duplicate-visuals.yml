@@ -38,3 +38,4 @@ jobs:
           git rm .github/workflows/hide-duplicate-visuals.yml 2>/dev/null || true
           git commit -m 'Remove temporary visual workflow [skip actions]' || true
           git push origin assets-diagnostico || true
+# trigger refresh
