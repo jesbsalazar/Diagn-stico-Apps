@@ -11,26 +11,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Patch index
-        env:
-          CLICK_B64: PLACEHOLDER
         run: |
           python - <<'PY'
           from pathlib import Path
-          import os,re
+          import re,base64
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          click='data:image/png;base64,'+os.environ['CLICK_B64']
-          s,n=re.subn(r'(\[\"ClickFunnels\",97,\"[^\"]*\",\")data:image/[^\"]+(\"\])', lambda m:m.group(1)+click+m.group(2), s, count=1)
-          s=re.sub(r'<section class=\"show\">.*?</section>', '', s, count=1, flags=re.S)
-          if 'class=\"appShowcase\"' not in s:
+          # Remove the duplicated secondary photo section.
+          s=re.sub(r'<section class="show">.*?</section>', '', s, count=1, flags=re.S)
+          # Replace the incorrect ClickFunnels/ActiveCampaign mark with the ClickFunnels-style mark.
+          svg='''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="8" fill="#09043b"/><path fill="#fff" d="M48 47l118 80-26 20-25-15 6 31-25 0-18-61-30-25z"/><path fill="#ff1744" d="M87 49l12-25 21 9 17-17 10 24 27-2 3 23-20 14z"/><path fill="#9ed3e8" d="M29 73l38 3 10 21-24 18 17 20-15 28-24-15 7-31-22-13 18-15z"/></svg>'''.encode()
+          click='data:image/svg+xml;base64,'+base64.b64encode(svg).decode()
+          s,n=re.subn(r'(\["ClickFunnels",97,"[^"]*"," )data:image/[^\"]+("\])',lambda m:m.group(1)+click+m.group(2),s,count=1)
+          if n==0:
+              s,n=re.subn(r'(\["ClickFunnels",97,"[^"]*",")data:image/[^\"]+("\])',lambda m:m.group(1)+click+m.group(2),s,count=1)
+          # Add a visible landing section with the exact embedded app logos already present in the HTML.
+          if 'class="appShowcase"' not in s:
               names=['ChatGPT','Claude','Canva','GoHighLevel','ClickFunnels','Zoom']
               cards=[]
               for name in names:
-                  m=re.search(r'\[\"'+re.escape(name)+r'\",[^\n\]]*?\"(data:image/[^\"]+)\"', s)
-                  if m: cards.append(f'<div class=\"logoCard\"><img src=\"{m.group(1)}\" alt=\"{name}\"><b>{name}</b></div>')
-              sec='<section class=\"appShowcase center\"><div class=\"kicker\">LAS HERRAMIENTAS QUE YA PAGAS</div><h2>Probablemente reconoces más de una.</h2><p class=\"sub\">El problema no es usar herramientas. Es pagar por varias que hacen cosas parecidas sin saberlo.</p><div class=\"logoCloud\">'+''.join(cards)+'</div></section>'
-              marker='</section>\n<section class=\"steps\">'
-              s=s.replace(marker,'</section>\n'+sec+'\n<section class=\"steps\">',1)
+                  m=re.search(r'\["'+re.escape(name)+r'",[^\n\]]*?"(data:image/[^\"]+)"',s)
+                  if m:
+                      cards.append(f'<div class="logoCard"><img src="{m.group(1)}" alt="{name}"><b>{name}</b></div>')
+              sec='<section class="appShowcase center"><div class="kicker">LAS HERRAMIENTAS QUE YA PAGAS</div><h2>Probablemente reconoces más de una.</h2><p class="sub">El problema no es usar herramientas. Es pagar por varias que hacen cosas parecidas sin saberlo.</p><div class="logoCloud">'+''.join(cards)+'</div></section>'
+              s=s.replace('</section>\n<section class="steps">','</section>\n'+sec+'\n<section class="steps">',1)
               css='.appShowcase{padding:70px 0 15px}.logoCloud{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:32px;align-items:stretch}.logoCard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px 12px;min-height:125px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;box-shadow:0 10px 28px rgba(7,26,53,.06)}.logoCard img{width:58px;height:58px;object-fit:contain;border-radius:10px}.logoCard b{font-size:12px}@media(max-width:850px){.logoCloud{grid-template-columns:repeat(3,1fr)}}@media(max-width:540px){.logoCloud{grid-template-columns:repeat(2,1fr)}}'
               s=s.replace('</style>',css+'</style>',1)
           p.write_text(s,encoding='utf-8')
