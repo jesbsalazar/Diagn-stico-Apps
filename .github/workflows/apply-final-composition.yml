@@ -1,0 +1,51 @@
+name: Apply final composition
+on:
+  push:
+    branches: [assets-diagnostico]
+jobs:
+  fix:
+    if: contains(github.event.head_commit.message, 'Apply final composition') == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: assets-diagnostico
+          fetch-depth: 0
+      - name: Apply final composition
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          css='''
+          /* FINAL COMPOSITION: text + real CTA + cropped hero visual */
+          .hero>div:first-child .eyebrow,.hero>div:first-child h1,.hero>div:first-child .lead{display:block!important}
+          .hero>div:first-child{display:flex!important;flex-direction:column;justify-content:center;align-items:flex-start}
+          .heroVisual{height:430px!important;overflow:hidden!important}
+          .heroVisual picture{display:block!important;width:100%!important;height:100%!important;overflow:hidden!important}
+          .heroVisual img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center bottom!important}
+          /* Remove the unwanted generated app-wall image; keep the other designed visuals. */
+          .assetSection:has(img[src*="descubre" i]),.assetSection:has(source[srcset*="descubre" i]){display:none!important}
+          @media(max-width:850px){
+            .hero{display:flex!important;flex-direction:column!important;align-items:stretch!important}
+            .hero>div:first-child{order:1!important;width:100%!important;align-items:center!important;text-align:center!important;padding-top:0!important}
+            .heroVisual{order:2!important;height:320px!important}
+            .hero>div:first-child .actions{justify-content:center!important;width:100%!important}
+            .hero>div:first-child .micro{justify-content:center!important;width:100%!important}
+          }
+          '''
+          s=s.replace('</style>',css+'\n</style>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Apply final composition [skip actions]' || true
+          git rm .github/workflows/apply-final-composition.yml 2>/dev/null || true
+          git commit -m 'Remove temporary composition workflow [skip actions]' || true
+          git fetch origin assets-diagnostico
+          git push origin HEAD:assets-diagnostico --force-with-lease
