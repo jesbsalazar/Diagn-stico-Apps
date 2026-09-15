@@ -1,0 +1,33 @@
+name: Remove unwanted app wall
+on:
+  push:
+    branches: [assets-diagnostico]
+    paths:
+      - '.github/workflows/remove-wall.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: assets-diagnostico
+      - name: Remove wall visually
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          css = '''\n<style id="remove-unwanted-app-wall">\n/* The generated app-wall visual is intentionally removed from the landing page. */\n.showcase .wall{display:none!important}\n.showcase{display:block!important;max-width:900px!important;margin:50px auto 0!important}\n.showcase .insight{width:100%!important}\n</style>\n'''
+          if 'id="remove-unwanted-app-wall"' not in s:
+              s = s.replace('</head>', css + '</head>')
+              p.write_text(s, encoding='utf-8')
+      - name: Commit page change and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/remove-wall.yml
+          git commit -m "Remove unwanted app wall [skip actions]"
+          git push origin HEAD:assets-diagnostico
